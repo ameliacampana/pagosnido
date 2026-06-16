@@ -589,7 +589,7 @@ let OBRAS = JSON.parse(localStorage.getItem("nido_obras")||"null") || OBRAS_DEFA
 // ── Carga automática de obras desde OneDrive JSON ─────────────────
 async function cargarObrasDesdeOneDrive(){
   try{
-    const res = await fetch(OBRAS_JSON_URL);
+    const res = await fetch(OBRAS_JSON_URL + "?t=" + Date.now(), {cache:"no-store"});
     if(!res.ok) throw new Error("HTTP "+res.status);
     const data = await res.json();
     if(!Array.isArray(data)||data.length===0) return;
@@ -723,6 +723,19 @@ function cpAvanzar(){
 }
 
 // ══ INIT ══════════════════════════════════════════════════════════════
+function poblarSelectObras(){
+  const sels=[document.getElementById("f-obra"),document.getElementById("filtroObra")];
+  sels.forEach(s=>{
+    while(s.options.length>1) s.remove(1);
+    OBRAS.forEach(o=>{
+      const op=document.createElement("option");
+      op.value=o.id;
+      op.textContent=o.nombre;
+      s.appendChild(op);
+    });
+  });
+}
+
 function initApp(){
   const opts={weekday:"short",day:"numeric",month:"short"};
   document.getElementById("hdrDate").textContent=new Date().toLocaleDateString("es-AR",opts);
@@ -730,19 +743,22 @@ function initApp(){
   document.getElementById("formNuevo").style.display="block";
   document.getElementById("successMsg").style.display="none";
   window._ultimoPago=null;
-  // Cargar obras desde OneDrive automáticamente
-  cargarObrasDesdeOneDrive().then(()=>{
-    const sels=[document.getElementById("f-obra"),document.getElementById("filtroObra")];
-    sels.forEach(s=>{while(s.options.length>1)s.remove(1);OBRAS.forEach(o=>{const op=document.createElement("option");op.value=o.id;op.textContent=o.nombre;s.appendChild(op);});});
-  });
-  const sels=[document.getElementById("f-obra"),document.getElementById("filtroObra")];
-  sels.forEach(s=>{if(s.options.length<=1) OBRAS.forEach(o=>{const op=document.createElement("option");op.value=o.id;op.textContent=o.nombre;s.appendChild(op);});});
   document.getElementById("f-fecha").value=hoy();
+
+  // Poblar con localStorage/default mientras carga el fetch
+  poblarSelectObras();
+
   // Autocompletar cliente al elegir obra
   document.getElementById("f-obra").addEventListener("change",function(){
-    const ob=OBRAS.find(o=>o.id===Number(this.value));
+    const ob=OBRAS.find(o=>String(o.id)===String(this.value));
     if(ob) document.getElementById("f-cliente").value=ob.cliente;
   });
+
+  // Cargar obras frescas desde GitHub (siempre, sin caché)
+  cargarObrasDesdeOneDrive().then(()=>{
+    poblarSelectObras();
+  });
+
   actualizarUI();
 }
 
