@@ -791,8 +791,9 @@ async function enviarWebhook(p){
       obra:p.obraNombre||"",
       cod_obra:"OBR-"+String(p.obra).padStart(4,"0"),
       cliente:p.clienteNombre||"",
-      cod_cliente:"CLI-"+String(p.obra).padStart(4,"0"),
+      cod_cliente:p.clienteCod||"",
       monto:p.monto||0,
+      moneda:p.moneda||"ARS",
       forma:p.forma||"",
       rubro:p.rubro||"",
       etapa:p.etapa||"",
@@ -964,7 +965,7 @@ function wspPago(p){
     "🏗️ *Obra:* "+(p.obraNombre||"-")+"\n"+
     "👤 *Cliente:* "+(p.clienteNombre||"-")+"\n"+
     "📅 *Fecha:* "+fmtF(p.fecha)+"\n"+
-    "💰 *Monto:* "+fmt(p.monto)+"\n"+
+    "💰 *Monto:* "+(p.moneda||"ARS")+" "+fmt(p.monto)+"\n"+
     "💳 *Forma de pago:* "+(p.forma||"-")+"\n"+
     "📂 *Rubro:* "+(p.rubro||"-")+"\n"+
     (p.comprobante?p.comprobante+"\n":"")+
