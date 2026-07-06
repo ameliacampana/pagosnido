@@ -592,7 +592,7 @@ async function cargarObrasDesdeOneDrive(){
     const res = await fetch(OBRAS_JSON_URL + "?t=" + Date.now(), {cache:"no-store"});
     if(!res.ok) throw new Error("HTTP "+res.status);
     const data = await res.json();
-    if(!Array.isArray(data)||data.length===0) return;
+    if(!Array.isArray(data)) return;
     const nuevas = data.map((o,i)=>({
       id: i+1,
       codigo:  o["CÓD_x002e_ OBRA"]  || o["CÓD. OBRA"] || o["CÃ\u0093D. OBRA"] || "",
