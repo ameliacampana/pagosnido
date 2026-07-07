@@ -601,7 +601,6 @@ async function cargarObrasDesdeOneDrive(){
       presupuesto: o["PRESUPUESTO ($)"] || "",
       estado:  o["ESTADO"]            || ""
     })).filter(o=>o.nombre);
-    if(!nuevas.length) return;
     OBRAS = nuevas;
     localStorage.setItem("nido_obras", JSON.stringify(OBRAS));
     recargarSelectObras();
