@@ -786,7 +786,7 @@ async function enviarWebhook(p){
   if(!webhookUrl) return false;
   try{
     await fetch(webhookUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-      fecha:fmtF(p.fecha),
+      fecha:p.fecha,
       obra:p.obraNombre||"",
       cod_obra:"OBR-"+String(p.obra).padStart(4,"0"),
       cliente:p.clienteNombre||"",
