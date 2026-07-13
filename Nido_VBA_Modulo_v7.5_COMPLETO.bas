@@ -205,6 +205,8 @@ Sub MacroRegistrarObra()
     Dim rawPctV         As Double
     Dim dblPct          As Double
     Dim moneda          As String
+    Dim intentosOD2     As Integer
+    Dim maxIntentosOD2  As Integer
 
     Set wsForm = ThisWorkbook.Sheets("ALT_OBRA")
     Set wsReg = ThisWorkbook.Sheets("OBRAS")
@@ -479,14 +481,24 @@ Sub MacroRegistrarObra()
         Set wbOD2 = wbYaAbierto
         Set wsOD2 = wbOD2.Sheets("OBRAS_ACTIVAS")
     Else
-        ' Abrir el archivo
-        On Error Resume Next
+        ' Abrir el archivo, con reintento automatico ante hipo de red/token
         Application.ScreenUpdating = False
-        Set wbOD2 = Workbooks.Open(rutaOD2)
-        On Error GoTo 0
+        maxIntentosOD2 = 3
+        For intentosOD2 = 1 To maxIntentosOD2
+            On Error Resume Next
+            Set wbOD2 = Nothing
+            Set wbOD2 = Workbooks.Open(rutaOD2)
+            On Error GoTo 0
+            If Not wbOD2 Is Nothing Then Exit For
+            If intentosOD2 < maxIntentosOD2 Then
+                Application.StatusBar = "Reintentando abrir OneDrive (" & intentosOD2 & "/" & maxIntentosOD2 & ")..."
+                Application.Wait Now + TimeValue("0:00:03")
+            End If
+        Next intentosOD2
+        Application.StatusBar = False
         If wbOD2 Is Nothing Then
-            msgSync = "ADVERTENCIA: No se pudo abrir el archivo OneDrive." & vbCrLf & _
-                      "Cerralo del browser si esta abierto y usa MacroImportarPagosOneDrive luego."
+            msgSync = "ADVERTENCIA: No se pudo abrir el archivo OneDrive despues de " & maxIntentosOD2 & " intentos." & vbCrLf & _
+                      "Cerralo del browser si esta abierto, verifica tu conexion, y usa MacroImportarPagosOneDrive luego."
             Application.ScreenUpdating = True
             GoTo MostrarMensaje
         End If
@@ -711,6 +723,8 @@ Sub MacroImportarPagosOneDrive()
     Dim wbYaAbierto   As Workbook
     Dim estaAbierto   As Boolean
     Dim cerrarAlFinal As Boolean
+    Dim intentos      As Integer
+    Dim maxIntentos   As Integer
 
     rutaOneDrive = RUTA_ONEDRIVE & "Nido_Manager_Sistema_v4.xlsx"
 
@@ -736,12 +750,23 @@ Sub MacroImportarPagosOneDrive()
         Set wbOD = wbYaAbierto
         cerrarAlFinal = False
     Else
-        On Error Resume Next
-        Set wbOD = Workbooks.Open(rutaOneDrive, ReadOnly:=True)
-        On Error GoTo 0
+        maxIntentos = 3
+        For intentos = 1 To maxIntentos
+            On Error Resume Next
+            Set wbOD = Nothing
+            Set wbOD = Workbooks.Open(rutaOneDrive, ReadOnly:=True)
+            On Error GoTo 0
+            If Not wbOD Is Nothing Then Exit For
+            If intentos < maxIntentos Then
+                Application.StatusBar = "Reintentando abrir OneDrive (" & intentos & "/" & maxIntentos & ")..."
+                Application.Wait Now + TimeValue("0:00:03")
+            End If
+        Next intentos
+        Application.StatusBar = False
         If wbOD Is Nothing Then
-            MsgBox "No se pudo abrir el archivo de OneDrive." & vbCrLf & _
-                   "Cerralo del navegador/otra ventana si esta abierto, o intenta de nuevo.", _
+            MsgBox "No se pudo abrir el archivo de OneDrive despues de " & maxIntentos & " intentos." & vbCrLf & _
+                   "Cerralo del navegador/otra ventana si esta abierto, verifica tu conexion a internet, " & _
+                   "y volve a intentar en un minuto.", _
                    vbExclamation, "Nido Manager"
             Application.ScreenUpdating = True
             GoTo Salir
