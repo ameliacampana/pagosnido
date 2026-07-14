@@ -541,7 +541,7 @@ Sub MacroRegistrarObra()
     ' -- Actualizar OBRAS_ACTIVAS local ---------------------------
     ' Cols: 1=COD | 2=OBRA | 3=COD_CLI | 4=NOMBRE_CLI | 5=PRESUPUESTO |
     '       6=COBRADO | 7=EGRESOS | 8=RESULTADO | 9=DEBE | 10=%COBRADO |
-    '       11=DIAS RESTANTES | 12=ESTADO
+    '       11=DIAS RESTANTES | 12=ESTADO | 13=MONEDA
     Dim wsOA   As Worksheet
     Dim iiOA   As Long
     Dim ultOA  As Long
@@ -574,6 +574,7 @@ Sub MacroRegistrarObra()
     wsOA.Cells(ultOA, 10).NumberFormat = "0.0%"
     wsOA.Cells(ultOA, 11).Value = ""
     wsOA.Cells(ultOA, 12).Value = "Activa"
+    wsOA.Cells(ultOA, 13).Value = moneda
     Set wsOA = Nothing
 
     ' -- Sincronizar OBRAS_ACTIVAS con OneDrive -------------------
@@ -664,6 +665,7 @@ Sub MacroRegistrarObra()
     wsOD2.Cells(ultOD2, 10).NumberFormat = "0.0%"
     wsOD2.Cells(ultOD2, 11).Value = ""
     wsOD2.Cells(ultOD2, 12).Value = "Activa"
+    wsOD2.Cells(ultOD2, 13).Value = moneda
 
     If Not estaAbierto Then
         wbOD2.Save
@@ -820,16 +822,22 @@ Private Sub RecalcularBalanceObras()
         codObra = Trim(CStr(wsOA.Cells(i, 1).Value))
         If codObra <> "" Then
 
-            ' --- Buscar la moneda oficial de esta obra en la hoja OBRAS ---
-            monedaObra = "ARS"
-            If ultObr >= 2 Then
-                For k = 2 To ultObr
-                    If Trim(CStr(wsObr.Cells(k, 1).Value)) = codObra Then
-                        monedaObra = Trim(CStr(wsObr.Cells(k, 11).Value))
-                        If monedaObra = "" Then monedaObra = "ARS"
-                        Exit For
-                    End If
-                Next k
+            ' --- Moneda oficial de esta obra: primero columna 13 (mas rapido) ---
+            monedaObra = Trim(CStr(wsOA.Cells(i, 13).Value))
+            If monedaObra = "" Then
+                ' Respaldo para obras creadas antes de este fix (sin columna 13 cargada)
+                monedaObra = "ARS"
+                If ultObr >= 2 Then
+                    For k = 2 To ultObr
+                        If Trim(CStr(wsObr.Cells(k, 1).Value)) = codObra Then
+                            monedaObra = Trim(CStr(wsObr.Cells(k, 11).Value))
+                            If monedaObra = "" Then monedaObra = "ARS"
+                            Exit For
+                        End If
+                    Next k
+                End If
+                ' Completar la columna 13 para que la proxima vez sea directo
+                wsOA.Cells(i, 13).Value = monedaObra
             End If
 
             totalCobrado = 0
