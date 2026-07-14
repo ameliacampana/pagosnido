@@ -597,7 +597,8 @@ async function cargarObrasDesdeOneDrive(){
       id: i+1,
       codigo:  o["CÓD_x002e_ OBRA"]  || o["CÓD. OBRA"] || o["CÃ\u0093D. OBRA"] || "",
       nombre:  o["NOMBRE OBRA"]       || o["OBRA"]       || "",
-      cliente: o["CLIENTE"]           || "",
+      cliente: o["NOMBRE DE CLIENTE"]  || "",
+      clienteCod: o["CLIENTE"]         || "",
       presupuesto: o["PRESUPUESTO ($)"] || "",
       estado:  o["ESTADO"]            || ""
     })).filter(o=>o.nombre);
@@ -833,6 +834,7 @@ function guardarCobro(){
     moneda:document.getElementById("f-moneda").value||"ARS",
     obra, obraNombre:ob?.nombre||"",
     clienteNombre:document.getElementById("f-cliente").value||ob?.cliente||"",
+    clienteCod:ob?.clienteCod||"",
     monto,
     forma:document.getElementById("f-forma").value,
     rubro:document.getElementById("f-rubro").value,
