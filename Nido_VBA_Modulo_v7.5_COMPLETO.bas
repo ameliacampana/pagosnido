@@ -14,14 +14,21 @@ Const RUTA_ONEDRIVE As String = "C:\Users\juanc\OneDrive - CAMPANA\MANGER NIDO\"
 ' autorizadas por el BCRA). Cachea el ultimo valor obtenido en
 ' OBRAS_ACTIVAS!O1 por si no hay internet en el momento de recalcular.
 '=======================================================================
+'=======================================================================
+' COTIZACION USD OFICIAL (promedio compra/venta, fuente vinculada a BCRA)
+' Fuente: dolarapi.com/v1/dolares/oficial (bancos y casas de cambio
+' autorizadas por el BCRA). Guarda un historial diario en la hoja
+' COTIZACION_USD (la crea sola si no existe) y usa el ultimo valor
+' guardado como respaldo si un dia no hay internet.
+'=======================================================================
 Function ObtenerCotizacionUSD() As Double
     Dim http      As Object
     Dim resp      As String
     Dim compra    As Double
     Dim venta     As Double
+    Dim promedio  As Double
     Dim p1        As Long
     Dim p2        As Long
-    Dim wsCache   As Worksheet
 
     On Error GoTo ErrorFetch
     Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
@@ -46,35 +53,90 @@ Function ObtenerCotizacionUSD() As Double
 
     If compra <= 0 Or venta <= 0 Then GoTo ErrorFetch
 
-    ObtenerCotizacionUSD = (compra + venta) / 2
-
-    ' Guardar en cache por si la proxima vez falla la conexion
-    On Error Resume Next
-    Set wsCache = ThisWorkbook.Sheets("OBRAS_ACTIVAS")
-    If Not wsCache Is Nothing Then
-        wsCache.Range("N1").Value = "Cotizacion USD oficial (prom. C/V):"
-        wsCache.Range("O1").Value = ObtenerCotizacionUSD
-        wsCache.Range("N2").Value = "Actualizada:"
-        wsCache.Range("O2").Value = Now
-        wsCache.Range("O2").NumberFormat = "DD/MM/YYYY HH:MM"
-    End If
-    On Error GoTo 0
+    promedio = (compra + venta) / 2
+    ObtenerCotizacionUSD = promedio
+    Call GuardarCotizacionEnHoja(compra, venta, promedio)
     Exit Function
 
 ErrorFetch:
-    ' Sin conexion o la API no respondio: usar el ultimo valor cacheado
+    ' Sin conexion o la API no respondio: usar el ultimo valor guardado en la hoja
+    ObtenerCotizacionUSD = UltimaCotizacionGuardada()
+End Function
+
+'=======================================================================
+' Asegura que exista la hoja COTIZACION_USD con encabezados
+'=======================================================================
+Private Function AsegurarHojaCotizacion() As Worksheet
+    Dim ws As Worksheet
     On Error Resume Next
-    Set wsCache = ThisWorkbook.Sheets("OBRAS_ACTIVAS")
-    If Not wsCache Is Nothing Then
-        If IsNumeric(wsCache.Range("O1").Value) Then
-            ObtenerCotizacionUSD = CDbl(wsCache.Range("O1").Value)
-        Else
-            ObtenerCotizacionUSD = 0
-        End If
-    Else
-        ObtenerCotizacionUSD = 0
-    End If
+    Set ws = ThisWorkbook.Sheets("COTIZACION_USD")
     On Error GoTo 0
+    If ws Is Nothing Then
+        Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        ws.Name = "COTIZACION_USD"
+        ws.Range("A1").Value = "FECHA"
+        ws.Range("B1").Value = "COMPRA"
+        ws.Range("C1").Value = "VENTA"
+        ws.Range("D1").Value = "PROMEDIO (usado en balance)"
+        ws.Range("A1:D1").Font.Bold = True
+        ws.Columns("A:D").ColumnWidth = 22
+    End If
+    Set AsegurarHojaCotizacion = ws
+End Function
+
+'=======================================================================
+' Guarda/actualiza la cotizacion del dia de hoy en la hoja COTIZACION_USD
+' (una fila por dia; si ya se corrio hoy, actualiza esa misma fila)
+'=======================================================================
+Private Sub GuardarCotizacionEnHoja(compra As Double, venta As Double, promedio As Double)
+    Dim ws        As Worksheet
+    Dim ultFila   As Long
+    Dim i         As Long
+    Dim filaHoy   As Long
+
+    Set ws = AsegurarHojaCotizacion()
+    If ws Is Nothing Then Exit Sub
+
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    If ultFila < 1 Then ultFila = 1
+
+    filaHoy = 0
+    For i = 2 To ultFila
+        If ws.Cells(i, 1).Value = Date Then
+            filaHoy = i
+            Exit For
+        End If
+    Next i
+
+    If filaHoy = 0 Then filaHoy = ultFila + 1
+
+    ws.Cells(filaHoy, 1).Value = Date
+    ws.Cells(filaHoy, 1).NumberFormat = "DD/MM/YYYY"
+    ws.Cells(filaHoy, 2).Value = compra
+    ws.Cells(filaHoy, 3).Value = venta
+    ws.Cells(filaHoy, 4).Value = promedio
+    ws.Cells(filaHoy, 2).Resize(1, 3).NumberFormat = "$#,##0.00"
+End Sub
+
+'=======================================================================
+' Devuelve el ultimo promedio guardado en la hoja (respaldo sin internet)
+'=======================================================================
+Private Function UltimaCotizacionGuardada() As Double
+    Dim ws      As Worksheet
+    Dim ultFila As Long
+
+    UltimaCotizacionGuardada = 0
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets("COTIZACION_USD")
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Function
+
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    If ultFila >= 2 Then
+        If IsNumeric(ws.Cells(ultFila, 4).Value) Then
+            UltimaCotizacionGuardada = CDbl(ws.Cells(ultFila, 4).Value)
+        End If
+    End If
 End Function
 
 '=======================================================================
