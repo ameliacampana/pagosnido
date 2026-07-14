@@ -901,8 +901,10 @@ function generarRecibo(id){
         <div style="font-size:10px;color:#8A929E;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px">Rubro</div>
         <div style="font-size:14px;color:#5A626E">${p.rubro||"-"}</div>
       </div>
-      ""
-      ${p.notas?`<div style="grid-column:1/-1;background:#F7F8F9;border-radius:8px;padding:10px 14px;border-left:3px solid #FBB42B"><div style="font-size:10px;color:#8A929E;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px">Notas</div><div style="font-size:14px;color:#5A626E">${p.notas}</div></div>`:""}
+      <div style="grid-column:1/-1;background:#F7F8F9;border-radius:8px;padding:10px 14px;border-left:3px solid #FBB42B">
+        <div style="font-size:10px;color:#8A929E;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px">Observaciones</div>
+        <div style="font-size:14px;color:#5A626E">${p.notas||"-"}</div>
+      </div>
     </div>
     <div style="margin-top:14px;padding:12px 14px;border-top:1px solid #DDE0E3;display:flex;justify-content:space-between;align-items:flex-end">
       <div style="font-size:10px;color:#C2C6CB;line-height:1.5">Válido como constancia de pago.<br>Nido Manager Proyectos · Nido Arquitectura</div>
