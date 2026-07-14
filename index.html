@@ -369,7 +369,7 @@ textarea{resize:none}
           </select>
         </div>
         <div class="field"><div class="field-lbl">Cliente</div><input type="text" id="f-cliente" placeholder="Nombre del cliente"></div>
-        <div class="field"><div class="field-lbl">Monto cobrado ($) *</div><input type="number" id="f-monto" placeholder="0.00" inputmode="decimal"></div>
+        <div class="field"><div class="field-lbl">Monto cobrado ($) *</div><input type="text" id="f-monto" placeholder="0,00" inputmode="decimal"></div>
         <div class="field"><div class="field-lbl">Moneda</div>
           <select id="f-moneda"><option value="ARS">$ Pesos (ARS)</option>
             <option value="USD">U$D Dólares (USD)</option>
@@ -824,7 +824,8 @@ function nuevoRegistro(){
 // ══ GUARDAR COBRO ═════════════════════════════════════════════════════
 function guardarCobro(){
   const obra=document.getElementById("f-obra").value;
-  const monto=parseFloat(document.getElementById("f-monto").value);
+  const montoTexto = document.getElementById("f-monto").value.trim().replace(",", ".");
+  const monto=parseFloat(montoTexto);
   if(!obra||!monto||monto<=0) return;
   const ob=OBRAS.find(o=>o.id===Number(obra));
   const p={
