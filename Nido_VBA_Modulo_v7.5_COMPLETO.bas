@@ -6,7 +6,16 @@ Option Explicit
 
 Const PREFIJO_CLI   As String = "CLI-"
 Const PREFIJO_OBR   As String = "OBR-"
-Const RUTA_ONEDRIVE As String = "C:\Users\juanc\OneDrive - CAMPANA\MANGER NIDO\"
+
+'=======================================================================
+' RUTA DE ONEDRIVE - dinamica segun el usuario de Windows de cada PC.
+' Antes era una ruta fija con "juanc" hardcodeado, lo que rompia el
+' codigo en cualquier PC con otro nombre de usuario de Windows.
+' Ahora se arma sola con el usuario logueado en la maquina donde corre.
+'=======================================================================
+Function ObtenerRutaOneDrive() As String
+    ObtenerRutaOneDrive = Environ("USERPROFILE") & "\OneDrive - CAMPANA\MANGER NIDO\"
+End Function
 
 '=======================================================================
 ' COTIZACION USD OFICIAL (promedio compra/venta, fuente vinculada a BCRA)
@@ -259,9 +268,9 @@ Sub MacroRegistrarCliente()
     Else
         dniFinal = IIf(dni <> "", dni, "SIN-DNI")
         nombreCarpeta = LimpiarNombre(apellido) & "_" & LimpiarNombre(dniFinal)
-        carpeta = RUTA_ONEDRIVE & "Clientes\" & nombreCarpeta
-        If Dir(RUTA_ONEDRIVE & "Clientes\", vbDirectory) = "" Then
-            On Error Resume Next: MkDir RUTA_ONEDRIVE & "Clientes\": On Error GoTo 0
+        carpeta = ObtenerRutaOneDrive() & "Clientes\" & nombreCarpeta
+        If Dir(ObtenerRutaOneDrive() & "Clientes\", vbDirectory) = "" Then
+            On Error Resume Next: MkDir ObtenerRutaOneDrive() & "Clientes\": On Error GoTo 0
         End If
         If Dir(carpeta, vbDirectory) = "" Then
             On Error Resume Next
@@ -586,7 +595,7 @@ Sub MacroRegistrarObra()
     Dim presOD2 As Double
     Dim msgSync As String
 
-    rutaOD2 = RUTA_ONEDRIVE & "Nido_Manager_Sistema_v4.xlsx"
+    rutaOD2 = ObtenerRutaOneDrive() & "Nido_Manager_Sistema_v4.xlsx"
 
     ' Verificar que el archivo existe y NO esta abierto en browser
     If Dir(rutaOD2) = "" Then
@@ -921,7 +930,7 @@ Sub MacroImportarPagosOneDrive()
     Dim intentos      As Integer
     Dim maxIntentos   As Integer
 
-    rutaOneDrive = RUTA_ONEDRIVE & "Nido_Manager_Sistema_v4.xlsx"
+    rutaOneDrive = ObtenerRutaOneDrive() & "Nido_Manager_Sistema_v4.xlsx"
 
     If Dir(rutaOneDrive) = "" Then
         MsgBox "No se encontro el archivo en OneDrive." & vbCrLf & _
