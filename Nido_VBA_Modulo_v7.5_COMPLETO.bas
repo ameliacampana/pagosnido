@@ -9,6 +9,75 @@ Const PREFIJO_OBR   As String = "OBR-"
 Const RUTA_ONEDRIVE As String = "C:\Users\juanc\OneDrive - CAMPANA\MANGER NIDO\"
 
 '=======================================================================
+' COTIZACION USD OFICIAL (promedio compra/venta, fuente vinculada a BCRA)
+' Fuente: dolarapi.com/v1/dolares/oficial (bancos y casas de cambio
+' autorizadas por el BCRA). Cachea el ultimo valor obtenido en
+' OBRAS_ACTIVAS!O1 por si no hay internet en el momento de recalcular.
+'=======================================================================
+Function ObtenerCotizacionUSD() As Double
+    Dim http      As Object
+    Dim resp      As String
+    Dim compra    As Double
+    Dim venta     As Double
+    Dim p1        As Long
+    Dim p2        As Long
+    Dim wsCache   As Worksheet
+
+    On Error GoTo ErrorFetch
+    Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+    http.SetTimeouts 5000, 5000, 5000, 5000
+    http.Open "GET", "https://dolarapi.com/v1/dolares/oficial", False
+    http.setRequestHeader "User-Agent", "NidoManager-VBA"
+    http.send
+    If http.Status <> 200 Then GoTo ErrorFetch
+    resp = http.responseText
+
+    p1 = InStr(resp, Chr(34) & "compra" & Chr(34))
+    If p1 = 0 Then GoTo ErrorFetch
+    p1 = InStr(p1, resp, ":") + 1
+    p2 = InStr(p1, resp, ",")
+    compra = Val(Mid(resp, p1, p2 - p1))
+
+    p1 = InStr(resp, Chr(34) & "venta" & Chr(34))
+    If p1 = 0 Then GoTo ErrorFetch
+    p1 = InStr(p1, resp, ":") + 1
+    p2 = InStr(p1, resp, ",")
+    venta = Val(Mid(resp, p1, p2 - p1))
+
+    If compra <= 0 Or venta <= 0 Then GoTo ErrorFetch
+
+    ObtenerCotizacionUSD = (compra + venta) / 2
+
+    ' Guardar en cache por si la proxima vez falla la conexion
+    On Error Resume Next
+    Set wsCache = ThisWorkbook.Sheets("OBRAS_ACTIVAS")
+    If Not wsCache Is Nothing Then
+        wsCache.Range("N1").Value = "Cotizacion USD oficial (prom. C/V):"
+        wsCache.Range("O1").Value = ObtenerCotizacionUSD
+        wsCache.Range("N2").Value = "Actualizada:"
+        wsCache.Range("O2").Value = Now
+        wsCache.Range("O2").NumberFormat = "DD/MM/YYYY HH:MM"
+    End If
+    On Error GoTo 0
+    Exit Function
+
+ErrorFetch:
+    ' Sin conexion o la API no respondio: usar el ultimo valor cacheado
+    On Error Resume Next
+    Set wsCache = ThisWorkbook.Sheets("OBRAS_ACTIVAS")
+    If Not wsCache Is Nothing Then
+        If IsNumeric(wsCache.Range("O1").Value) Then
+            ObtenerCotizacionUSD = CDbl(wsCache.Range("O1").Value)
+        Else
+            ObtenerCotizacionUSD = 0
+        End If
+    Else
+        ObtenerCotizacionUSD = 0
+    End If
+    On Error GoTo 0
+End Function
+
+'=======================================================================
 ' MACRO 1: REGISTRAR CLIENTE
 '=======================================================================
 Sub MacroRegistrarCliente()
@@ -650,18 +719,28 @@ End Sub
 Private Sub RecalcularBalanceObras()
     Dim wsOA         As Worksheet
     Dim wsPag        As Worksheet
+    Dim wsObr        As Worksheet
     Dim ultOA        As Long
     Dim ultPag       As Long
+    Dim ultObr       As Long
     Dim i            As Long
     Dim j            As Long
+    Dim k            As Long
     Dim codObra      As String
     Dim totalCobrado As Double
     Dim presupuesto  As Double
     Dim egresos      As Double
+    Dim monedaObra   As String
+    Dim monedaPago   As String
+    Dim montoPago    As Double
+    Dim montoSumar   As Double
+    Dim cotizacion   As Double
+    Dim sinConvertir As Long
 
     On Error Resume Next
     Set wsOA = ThisWorkbook.Sheets("OBRAS_ACTIVAS")
     Set wsPag = ThisWorkbook.Sheets("PAGOS")
+    Set wsObr = ThisWorkbook.Sheets("OBRAS")
     On Error GoTo 0
     If wsOA Is Nothing Or wsPag Is Nothing Then GoTo Salir
 
@@ -669,14 +748,53 @@ Private Sub RecalcularBalanceObras()
     ultPag = wsPag.Cells(wsPag.Rows.Count, 1).End(xlUp).Row
     If ultOA < 5 Then GoTo Salir
 
+    cotizacion = ObtenerCotizacionUSD()
+    sinConvertir = 0
+
+    ultObr = 0
+    If Not wsObr Is Nothing Then ultObr = wsObr.Cells(wsObr.Rows.Count, 1).End(xlUp).Row
+
     For i = 5 To ultOA
         codObra = Trim(CStr(wsOA.Cells(i, 1).Value))
         If codObra <> "" Then
+
+            ' --- Buscar la moneda oficial de esta obra en la hoja OBRAS ---
+            monedaObra = "ARS"
+            If ultObr >= 2 Then
+                For k = 2 To ultObr
+                    If Trim(CStr(wsObr.Cells(k, 1).Value)) = codObra Then
+                        monedaObra = Trim(CStr(wsObr.Cells(k, 11).Value))
+                        If monedaObra = "" Then monedaObra = "ARS"
+                        Exit For
+                    End If
+                Next k
+            End If
+
             totalCobrado = 0
             If ultPag >= 5 Then
                 For j = 5 To ultPag
                     If Trim(CStr(wsPag.Cells(j, 3).Value)) = codObra Then
-                        totalCobrado = totalCobrado + Val(wsPag.Cells(j, 7).Value)
+                        montoPago = Val(wsPag.Cells(j, 7).Value)
+                        monedaPago = Trim(CStr(wsPag.Cells(j, 8).Value))
+                        If monedaPago = "" Then monedaPago = "ARS"
+
+                        If monedaPago = monedaObra Then
+                            montoSumar = montoPago
+                        ElseIf cotizacion > 0 Then
+                            If monedaPago = "USD" And monedaObra = "ARS" Then
+                                montoSumar = montoPago * cotizacion
+                            ElseIf monedaPago = "ARS" And monedaObra = "USD" Then
+                                montoSumar = montoPago / cotizacion
+                            Else
+                                montoSumar = montoPago  ' combinacion no ARS/USD, no se convierte
+                            End If
+                        Else
+                            ' No hay cotizacion disponible (sin internet y sin cache) - no se puede convertir
+                            montoSumar = 0
+                            sinConvertir = sinConvertir + 1
+                        End If
+
+                        totalCobrado = totalCobrado + montoSumar
                     End If
                 Next j
             End If
@@ -699,8 +817,15 @@ Private Sub RecalcularBalanceObras()
         End If
     Next i
 
+    If sinConvertir > 0 Then
+        MsgBox "Atencion: " & sinConvertir & " pago(s) no se pudieron convertir de moneda " & _
+               "porque no hay conexion a internet ni cotizacion en cache." & vbCrLf & _
+               "Esos pagos NO se sumaron al balance esta vez. Volve a correr la macro " & _
+               "cuando tengas conexion.", vbExclamation, "Nido Manager"
+    End If
+
 Salir:
-    Set wsOA = Nothing: Set wsPag = Nothing
+    Set wsOA = Nothing: Set wsPag = Nothing: Set wsObr = Nothing
 End Sub
 
 '=======================================================================
