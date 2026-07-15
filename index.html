@@ -815,7 +815,7 @@ function nuevoRegistro(){
   window._ultimoPago = null;
   document.getElementById("formNuevo").style.display="block";
   document.getElementById("successMsg").style.display="none";
-  ["f-recibo","f-monto","f-comprobante","f-notas","f-cliente"].forEach(id=>document.getElementById(id).value="");
+  ["f-monto","f-notas","f-cliente"].forEach(id=>document.getElementById(id).value="");
   ["f-obra","f-forma","f-rubro","f-etapa"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("f-fecha").value=hoy();
   document.getElementById("f-obra").className="";
