@@ -369,7 +369,7 @@ textarea{resize:none}
           </select>
         </div>
         <div class="field"><div class="field-lbl">Cliente</div><input type="text" id="f-cliente" placeholder="Nombre del cliente"></div>
-        <div class="field"><div class="field-lbl">Monto cobrado ($) *</div><input type="text" id="f-monto" placeholder="0,00" inputmode="decimal"></div>
+        <div class="field"><div class="field-lbl">Monto cobrado ($) *</div><input type="text" id="f-monto" placeholder="0,00" inputmode="decimal" oninput="formatearMontoInput(this)"></div>
         <div class="field"><div class="field-lbl">Moneda</div>
           <select id="f-moneda"><option value="ARS">$ Pesos (ARS)</option>
             <option value="USD">U$D Dólares (USD)</option>
@@ -621,6 +621,18 @@ let exportado  = false;
 
 // ══ HELPERS ═════════════════════════════════════════════════════════
 const fmt   = n => "$"+Number(n).toLocaleString("es-AR");
+
+// Formatea el input de monto con puntos de miles mientras se escribe (formato es-AR: 1.234.567,89)
+function formatearMontoInput(el){
+  let v = el.value;
+  // Solo permitir dígitos y una coma decimal
+  v = v.replace(/[^\d,]/g,"");
+  const partes = v.split(",");
+  let entero = partes[0].replace(/^0+(?=\d)/,""); // sin ceros a la izquierda
+  let decimal = partes.length>1 ? partes.slice(1).join("").slice(0,2) : null;
+  entero = entero.replace(/\B(?=(\d{3})+(?!\d))/g,".");
+  el.value = decimal!==null ? entero+","+decimal : entero;
+}
 const fmtF  = f => f?f.split("-").reverse().join("/"):"";
 const hoy   = ()=> new Date().toISOString().slice(0,10);
 const uid   = ()=> Date.now().toString(36)+Math.random().toString(36).slice(2,5);
@@ -824,7 +836,7 @@ function nuevoRegistro(){
 // ══ GUARDAR COBRO ═════════════════════════════════════════════════════
 function guardarCobro(){
   const obra=document.getElementById("f-obra").value;
-  const montoTexto = document.getElementById("f-monto").value.trim().replace(",", ".");
+  const montoTexto = document.getElementById("f-monto").value.trim().replace(/\./g,"").replace(",", ".");
   const monto=parseFloat(montoTexto);
   if(!obra||!monto||monto<=0) return;
   const ob=OBRAS.find(o=>o.id===Number(obra));
